@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { Switch } from './ui/switch';
 import { Textarea } from './ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Upload, CheckCircle } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -14,7 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
+import { MultiSelect } from './ui/multi-select';
 import { rulesApi } from '../../services/api';
+import shp from 'shpjs';
+import JSZip from 'jszip';
+import { configService } from '../../config/configService';
 
 interface RuleFormProps {
   initialRule?: Rule;
@@ -39,6 +43,15 @@ export function RuleForm({ initialRule, onSubmit, onCancel, isEdit, currentUsern
   const [profileAlgorithmMapping, setProfileAlgorithmMapping] = useState<Record<string, string>>({});
   const [availableProfiles, setAvailableProfiles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploadStatus, setUploadStatus] = useState<{ success: boolean; message: string } | null>(null);
+  
+  // Multi-select options from config
+  const [availableColorTypes] = useState<string[]>(configService.getColorTypes());
+  const [availableSensorTypes] = useState<string[]>(configService.getSensorTypes());
+  
+  // Sensor groups state (loaded dynamically based on model)
+  const [availableSensorGroups, setAvailableSensorGroups] = useState<string[]>([]);
+  const [loadingSensorGroups, setLoadingSensorGroups] = useState(false);
 
   useEffect(() => {
     const loadMappingData = async () => {
@@ -89,10 +102,81 @@ export function RuleForm({ initialRule, onSubmit, onCancel, isEdit, currentUsern
     if (errors.algorithm_name) {
       setErrors(prev => ({ ...prev, algorithm_name: '' }));
     }
+
+    // Load sensor groups for the selected profile
+    setLoadingSensorGroups(true);
+    rulesApi.getSensorGroupsByModel(profileName)
+      .then(groupsMap => {
+        // Extract group names from the returned map
+        const groupNames = Object.keys(groupsMap);
+        setAvailableSensorGroups(groupNames);
+        setLoadingSensorGroups(false);
+      })
+      .catch(error => {
+        console.error('Failed to load sensor groups:', error);
+        setLoadingSensorGroups(false);
+      });
+  };
+
+  const validateWKT = (wkt: string): { isValid: boolean; error?: string } => {
+    const trimmedWKT = wkt.trim().toUpperCase();
+    const config = configService.getRulesManagement();
+    const maxPoints = config.general.wktPointsLimit;
+    
+    // Check if it starts with POLYGON or MULTIPOLYGON
+    if (!trimmedWKT.startsWith('POLYGON') && !trimmedWKT.startsWith('MULTIPOLYGON')) {
+      return { 
+        isValid: false, 
+        error: 'Location WKT must be a POLYGON or MULTIPOLYGON' 
+      };
+    }
+
+    // Count coordinate pairs (points)
+    // Match all number pairs like "123.45 67.89" or "123 67"
+    const coordinatePairs = wkt.match(/[-+]?\d+(?:\.\d+)?\s+[-+]?\d+(?:\.\d+)?/g);
+    
+    if (!coordinatePairs || coordinatePairs.length === 0) {
+      return { 
+        isValid: false, 
+        error: 'No valid coordinate points found in WKT' 
+      };
+    }
+
+    if (coordinatePairs.length > maxPoints) {
+      return { 
+        isValid: false, 
+        error: `WKT contains ${coordinatePairs.length} points. Maximum allowed is ${maxPoints} points` 
+      };
+    }
+
+    // For POLYGON, need at least 3 points (4 including closing point)
+    if (trimmedWKT.startsWith('POLYGON') && coordinatePairs.length < 3) {
+      return { 
+        isValid: false, 
+        error: 'POLYGON must contain at least 3 coordinate points' 
+      };
+    }
+
+    // Basic format validation
+    const polygonRegex = /^POLYGON\s*\(\s*\([\s\S]+\)\s*\)$/i;
+    const multiPolygonRegex = /^MULTIPOLYGON\s*\(\s*\(\s*\([\s\S]+\)\s*\)\s*\)$/i;
+    
+    const isValidFormat = polygonRegex.test(wkt) || multiPolygonRegex.test(wkt);
+    
+    if (!isValidFormat) {
+      return { 
+        isValid: false, 
+        error: 'Invalid WKT format. Expected POLYGON((x1 y1, x2 y2, ...)) or MULTIPOLYGON(((x1 y1, x2 y2, ...)))' 
+      };
+    }
+
+    return { isValid: true };
   };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
+    const config = configService.getRulesManagement();
+    const { minPriority, maxPriority } = config.general;
 
     if (!formData.rule_name.trim()) {
       newErrors.rule_name = 'Rule name is required';
@@ -106,12 +190,12 @@ export function RuleForm({ initialRule, onSubmit, onCancel, isEdit, currentUsern
       newErrors.algorithm_name = 'Algorithm name is required';
     }
 
-    if (formData.priority < 2 || formData.priority > 10) {
-      newErrors.priority = 'Priority must be between 2 and 10';
+    if (formData.priority < minPriority || formData.priority > maxPriority) {
+      newErrors.priority = `Priority must be between ${minPriority} and ${maxPriority}`;
     }
 
     if (!formData.profile_name?.trim()) {
-      newErrors.profile_name = 'Profile name is required';
+      newErrors.profile_name = 'Model name is required';
     }
 
     if (!formData.customer?.trim()) {
@@ -124,6 +208,12 @@ export function RuleForm({ initialRule, onSubmit, onCancel, isEdit, currentUsern
 
     if (!formData.location_wkt?.trim()) {
       newErrors.location_wkt = 'Location WKT is required';
+    } else {
+      // Validate WKT format and point count
+      const wktValidation = validateWKT(formData.location_wkt);
+      if (!wktValidation.isValid) {
+        newErrors.location_wkt = wktValidation.error || 'Invalid WKT format';
+      }
     }
 
     if (formData.minimum_resolution !== undefined && formData.minimum_resolution < 0) {
@@ -141,8 +231,100 @@ export function RuleForm({ initialRule, onSubmit, onCancel, isEdit, currentUsern
     }
   };
 
+  const convertGeometryToWKT = (geometry: any): string => {
+    const type = geometry.type;
+    const coords = geometry.coordinates;
+
+    if (type === 'Polygon') {
+      const rings = coords.map((ring: number[][]) => 
+        '(' + ring.map((point: number[]) => `${point[0]} ${point[1]}`).join(', ') + ')'
+      ).join(', ');
+      return `POLYGON(${rings})`;
+    } else if (type === 'MultiPolygon') {
+      const polygons = coords.map((polygon: number[][][]) => {
+        const rings = polygon.map((ring: number[][]) => 
+          '(' + ring.map((point: number[]) => `${point[0]} ${point[1]}`).join(', ') + ')'
+        ).join(', ');
+        return `(${rings})`;
+      }).join(', ');
+      return `MULTIPOLYGON(${polygons})`;
+    }
+    
+    throw new Error(`Unsupported geometry type: ${type}. Only POLYGON and MULTIPOLYGON are allowed.`);
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Clear previous status
+    setUploadStatus(null);
+    if (errors.location_wkt) {
+      setErrors(prev => ({ ...prev, location_wkt: '' }));
+    }
+
+    try {
+      // Convert file to ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      
+      // shpjs can handle both .zip files and .shp files directly
+      // For .zip files, it will extract and parse all components internally
+      const geojson: any = await shp(arrayBuffer);
+      
+      if (!geojson || !geojson.features || geojson.features.length === 0) {
+        setErrors(prev => ({ ...prev, location_wkt: 'No features found in shapefile' }));
+        setUploadStatus({ success: false, message: 'No features found in shapefile' });
+        return;
+      }
+
+      const firstFeature = geojson.features[0];
+      const geometryType = firstFeature.geometry.type;
+
+      // Validate geometry type
+      if (geometryType !== 'Polygon' && geometryType !== 'MultiPolygon') {
+        const errorMsg = `Invalid geometry type: ${geometryType}. Only POLYGON and MULTIPOLYGON are supported.`;
+        setErrors(prev => ({ ...prev, location_wkt: errorMsg }));
+        setUploadStatus({ success: false, message: errorMsg });
+        return;
+      }
+
+      // Convert to WKT
+      const wkt = convertGeometryToWKT(firstFeature.geometry);
+
+      // Validate the generated WKT (including point count)
+      const wktValidation = validateWKT(wkt);
+      if (!wktValidation.isValid) {
+        setErrors(prev => ({ ...prev, location_wkt: wktValidation.error || 'Invalid WKT' }));
+        setUploadStatus({ success: false, message: wktValidation.error || 'Invalid WKT' });
+        return;
+      }
+
+      // Success - set the WKT value
+      handleChange('location_wkt', wkt);
+      setUploadStatus({ 
+        success: true, 
+        message: `Shapefile uploaded successfully! (${geometryType} with ${geojson.features.length} feature(s))` 
+      });
+    } catch (error: any) {
+      console.error('Shapefile upload error:', error);
+      let errorMsg = 'Failed to parse shapefile.';
+      
+      if (error.message && error.message.includes('unzip')) {
+        errorMsg = 'Failed to parse shapefile. Please upload a complete ZIP file containing all shapefile components (.shp, .dbf, .shx, .prj).';
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
+      setErrors(prev => ({ ...prev, location_wkt: errorMsg }));
+      setUploadStatus({ success: false, message: errorMsg });
+    }
+
+    // Reset file input
+    event.target.value = '';
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
+    <form onSubmit={handleSubmit} className="space-y-4 w-full">{/* Changed from max-w-2xl to w-full */}
       {Object.keys(errors).length > 0 && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -183,9 +365,33 @@ export function RuleForm({ initialRule, onSubmit, onCancel, isEdit, currentUsern
           />
         </div>
 
+        {/* Model Name (formerly Profile Name) - aligned with Algorithm */}
+        <div>
+          <Label htmlFor="profile_name" className={errors.profile_name ? 'text-red-500' : ''}>
+            Model Name *
+          </Label>
+          <Select
+            value={formData.profile_name || ''}
+            onValueChange={handleProfileChange}
+          >
+            <SelectTrigger
+              className={errors.profile_name ? 'border-red-500 focus:ring-red-500' : ''}
+            >
+              <SelectValue placeholder="Select a model" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableProfiles.map((profile) => (
+                <SelectItem key={profile} value={profile}>
+                  {profile}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div>
           <Label htmlFor="algorithm_name" className={errors.algorithm_name ? 'text-red-500' : ''}>
-            Algorithm Name * (Auto-set by Profile)
+            Algorithm Name * (Auto-set by Model)
           </Label>
           <Input
             id="algorithm_name"
@@ -193,7 +399,66 @@ export function RuleForm({ initialRule, onSubmit, onCancel, isEdit, currentUsern
             readOnly
             disabled
             className={`bg-gray-100 ${errors.algorithm_name ? 'border-red-500' : ''}`}
-            placeholder="Select a profile first"
+            placeholder="Select a model first"
+          />
+        </div>
+
+        {/* Username - aligned with Customer */}
+        <div>
+          <Label htmlFor="username" className={errors.username ? 'text-red-500' : ''}>
+            Username * {!isEdit ? '(Auto-set from login)' : '(Cannot be changed)'}
+          </Label>
+          <Input
+            id="username"
+            value={formData.username || ''}
+            onChange={(e) => handleChange('username', e.target.value)}
+            readOnly
+            disabled
+            className={`bg-gray-100 ${errors.username ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="customer" className={errors.customer ? 'text-red-500' : ''}>
+            Customer *
+          </Label>
+          <Input
+            id="customer"
+            value={formData.customer || ''}
+            onChange={(e) => handleChange('customer', e.target.value)}
+            className={errors.customer ? 'border-red-500 focus-visible:ring-red-500' : ''}
+          />
+        </div>
+
+        {/* Min Resolution - aligned with Max Resolution */}
+        <div>
+          <Label htmlFor="minimum_resolution" className={errors.minimum_resolution ? 'text-red-500' : ''}>
+            Min Resolution (0 or higher)
+          </Label>
+          <Input
+            id="minimum_resolution"
+            type="number"
+            min={0}
+            value={formData.minimum_resolution ?? ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              handleChange('minimum_resolution', val === '' ? undefined : parseInt(val));
+            }}
+            className={errors.minimum_resolution ? 'border-red-500 focus-visible:ring-red-500' : ''}
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="maximum_resolution">Max Resolution</Label>
+          <Input
+            id="maximum_resolution"
+            type="number"
+            min={0}
+            value={formData.maximum_resolution ?? ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              handleChange('maximum_resolution', val === '' ? undefined : parseInt(val));
+            }}
           />
         </div>
 
@@ -215,91 +480,51 @@ export function RuleForm({ initialRule, onSubmit, onCancel, isEdit, currentUsern
             className={errors.priority ? 'border-red-500 focus-visible:ring-red-500' : ''}
           />
         </div>
+      </div>
 
+      {/* New Fields: Sensor Types, Sensor Groups, Color Types */}
+      <div className="grid grid-cols-3 gap-4">
         <div>
-          <Label htmlFor="profile_name" className={errors.profile_name ? 'text-red-500' : ''}>
-            Profile Name *
+          <Label htmlFor="sensor_types">
+            Sensor Types
           </Label>
-          <Select
-            value={formData.profile_name || ''}
-            onValueChange={handleProfileChange}
-          >
-            <SelectTrigger
-              className={errors.profile_name ? 'border-red-500 focus:ring-red-500' : ''}
-            >
-              <SelectValue placeholder="Select a profile" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableProfiles.map((profile) => (
-                <SelectItem key={profile} value={profile}>
-                  {profile}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label htmlFor="customer" className={errors.customer ? 'text-red-500' : ''}>
-            Customer *
-          </Label>
-          <Input
-            id="customer"
-            value={formData.customer || ''}
-            onChange={(e) => handleChange('customer', e.target.value)}
-            className={errors.customer ? 'border-red-500 focus-visible:ring-red-500' : ''}
+          <MultiSelect
+            options={availableSensorTypes}
+            value={formData.sensor_types || []}
+            onChange={(selected) => handleChange('sensor_types', selected)}
+            placeholder="Select sensor types"
           />
         </div>
 
         <div>
-          <Label htmlFor="username" className={errors.username ? 'text-red-500' : ''}>
-            Username * {!isEdit ? '(Auto-set from login)' : '(Cannot be changed)'}
+          <Label htmlFor="sensor_groups">
+            Sensor Groups {!formData.profile_name && '(Select model first)'}
           </Label>
-          <Input
-            id="username"
-            value={formData.username || ''}
-            onChange={(e) => handleChange('username', e.target.value)}
-            readOnly
-            disabled
-            className={`bg-gray-100 ${errors.username ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+          <MultiSelect
+            options={availableSensorGroups}
+            value={formData.sensor_names || []}
+            onChange={(selected) => handleChange('sensor_names', selected)}
+            placeholder={loadingSensorGroups ? "Loading..." : !formData.profile_name ? "Select model first" : "Select sensor groups"}
+            disabled={!formData.profile_name || loadingSensorGroups}
           />
         </div>
 
         <div>
-          <Label htmlFor="maximum_resolution">Max Resolution</Label>
-          <Input
-            id="maximum_resolution"
-            type="number"
-            min={0}
-            value={formData.maximum_resolution ?? ''}
-            onChange={(e) => {
-              const val = e.target.value;
-              handleChange('maximum_resolution', val === '' ? undefined : parseInt(val));
-            }}
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="minimum_resolution" className={errors.minimum_resolution ? 'text-red-500' : ''}>
-            Min Resolution (0 or higher)
+          <Label htmlFor="color_types">
+            Color Types
           </Label>
-          <Input
-            id="minimum_resolution"
-            type="number"
-            min={0}
-            value={formData.minimum_resolution ?? ''}
-            onChange={(e) => {
-              const val = e.target.value;
-              handleChange('minimum_resolution', val === '' ? undefined : parseInt(val));
-            }}
-            className={errors.minimum_resolution ? 'border-red-500 focus-visible:ring-red-500' : ''}
+          <MultiSelect
+            options={availableColorTypes}
+            value={formData.color_types || []}
+            onChange={(selected) => handleChange('color_types', selected)}
+            placeholder="Select color types"
           />
         </div>
       </div>
 
       <div>
         <Label htmlFor="location_wkt" className={errors.location_wkt ? 'text-red-500' : ''}>
-          Location WKT *
+          Location WKT * (POLYGON or MULTIPOLYGON, max 1000 points)
         </Label>
         <Textarea
           id="location_wkt"
@@ -307,7 +532,50 @@ export function RuleForm({ initialRule, onSubmit, onCancel, isEdit, currentUsern
           onChange={(e) => handleChange('location_wkt', e.target.value)}
           rows={2}
           className={errors.location_wkt ? 'border-red-500 focus-visible:ring-red-500' : ''}
+          placeholder="POLYGON((x1 y1, x2 y2, x3 y3, x1 y1))"
         />
+        {!errors.location_wkt && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Enter coordinates as POLYGON or MULTIPOLYGON format. Maximum 1000 coordinate points allowed.
+          </p>
+        )}
+        
+        {/* Shapefile Upload Button */}
+        <div className="mt-3">
+          <input
+            id="shapefileUpload"
+            type="file"
+            accept=".zip"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => document.getElementById('shapefileUpload')?.click()}
+            className="w-full sm:w-auto"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Upload Shapefile (.zip)
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2">
+            Upload a ZIP file containing all shapefile components (.shp, .dbf, .shx, .prj)
+          </p>
+        </div>
+        
+        {/* Upload Status Message */}
+        {uploadStatus && (
+          <Alert className="mt-3" variant={uploadStatus.success ? 'default' : 'destructive'}>
+            {uploadStatus.success ? (
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            ) : (
+              <AlertCircle className="h-4 w-4" />
+            )}
+            <AlertDescription className={uploadStatus.success ? 'text-green-700' : ''}>
+              {uploadStatus.message}
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">

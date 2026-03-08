@@ -1,21 +1,23 @@
+import 'reflect-metadata';
 import { useState, useEffect } from 'react';
-import { Rule } from '../types/rule';
-import { AuthUser } from '../types/user';
-import { rulesApi } from '../services/api';
-import { createApprovalRequest } from '../services/approvalService';
-import { RuleForm } from './components/RuleForm';
-import { RulesList } from './components/RulesList';
-import { LoginPage } from './components/LoginPage';
-import { UsersManagement } from './components/UsersManagement';
-import { ApprovalsManagement } from './components/ApprovalsManagement';
-import { MyRequests } from './components/MyRequests';
+import { Database, Plus, List, LogOut, Shield, Users, FileCheck, ClipboardList } from 'lucide-react';
+import { loadConfig } from '../config/configLoader';
+import { configService } from '../config/configService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { Button } from './components/ui/button';
 import { Badge } from './components/ui/badge';
-import { toast } from 'sonner';
 import { Toaster } from './components/ui/sonner';
-import { Database, Plus, List, LogOut, Shield, Users, FileCheck, ClipboardList } from 'lucide-react';
+import { toast } from 'sonner';
+import { RulesList } from './components/RulesList';
+import { RuleForm } from './components/RuleForm';
+import { LoginPage } from './components/LoginPage';
+import { UsersManagement } from './components/UsersManagement';
+import { ApprovalsManagement } from './components/ApprovalsManagement';
+import { MyRequests } from './components/MyRequests';
+import { rulesApi } from './services/api';
+import { createApprovalRequest } from './services/approvalRequests';
+import type { Rule, AuthUser } from './types';
 
 // ============================================================================
 // CONSTANTS
@@ -47,9 +49,28 @@ export default function App() {
   const [adminSubTab, setAdminSubTab] = useState('users');
 
   // --------------------------------------------------------------------------
+  // STATE - Config Loading
+  // --------------------------------------------------------------------------
+  const [configLoaded, setConfigLoaded] = useState(false);
+
+  // --------------------------------------------------------------------------
+  // EFFECTS - Load configuration on mount
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    loadConfig()
+      .then(() => setConfigLoaded(true))
+      .catch(error => {
+        console.error('Failed to load configuration:', error);
+        toast.error('Failed to load application configuration');
+      });
+  }, []);
+
+  // --------------------------------------------------------------------------
   // EFFECTS - Check for existing authentication
   // --------------------------------------------------------------------------
   useEffect(() => {
+    if (!configLoaded) return;
+    
     const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
     if (savedAuth) {
       try {
@@ -66,7 +87,7 @@ export default function App() {
         localStorage.removeItem(AUTH_STORAGE_KEY);
       }
     }
-  }, []);
+  }, [configLoaded]);
 
   // --------------------------------------------------------------------------
   // EFFECTS - Load rules when authenticated
@@ -125,7 +146,7 @@ export default function App() {
       return rules;
     }
     
-    // Editors can only see their own rules
+    // Users can only see their own rules
     return rules.filter(rule => rule.username === currentUser.username);
   };
 
@@ -291,10 +312,10 @@ export default function App() {
                         Admin
                       </Badge>
                     )}
-                    {currentUser?.role === 'editor' && (
+                    {currentUser?.role === 'user' && (
                       <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">
                         <Users className="h-3 w-3 mr-1" />
-                        Editor
+                        User
                       </Badge>
                     )}
                   </span>
@@ -352,8 +373,8 @@ export default function App() {
               </TabsContent>
 
               <TabsContent value="create" className="mt-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Form Card */}
+                <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6">
+                  {/* Form Card - Takes more space (60%) */}
                   <Card>
                     <CardHeader>
                       <CardTitle>Create New Rule</CardTitle>
@@ -370,18 +391,18 @@ export default function App() {
                     </CardContent>
                   </Card>
 
-                  {/* Map Viewer Card */}
-                  <Card className="h-fit">
+                  {/* Map Viewer Card - Takes less space (40%) */}
+                  <Card className="h-full">
                     <CardHeader>
                       <CardTitle>Map Viewer</CardTitle>
                       <CardDescription>
                         Interactive map for rule location context
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="w-full h-[600px] border rounded-lg overflow-hidden bg-gray-100">
+                    <CardContent className="h-[calc(100%-5rem)]">
+                      <div className="w-full h-full border rounded-lg overflow-hidden bg-gray-100">
                         <iframe
-                          src="about:blank"
+                          src={configService.getMapViewerIframeUrl()}
                           title="Map Viewer"
                           className="w-full h-full border-0"
                           sandbox="allow-scripts allow-same-origin"

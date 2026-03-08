@@ -1,0 +1,88 @@
+{
+  "rules-management": {
+    "endpoint": "http://localhost:8080",
+    "general": {
+      "wktPointsLimit": 1000,
+      "minPriority": 2,
+      "maxPriority": 10,
+      "colorTypes": [
+        "RGB",
+        "Grayscale",
+        "Multispectral",
+        "Panchromatic",
+        "Infrared"
+      ],
+      "sensorTypes": [
+        "Optical",
+        "Radar",
+        "SAR",
+        "LiDAR",
+        "Thermal",
+        "Hyperspectral"
+      ]
+    },
+    "get-all": {
+      "route": "/api/rules/all",
+      "timeout": 8000
+    },
+    "get-by-id": {
+      "route": "/api/rules/info",
+      "timeout": 8000
+    },
+    "create": {
+      "route": "/api/rules/create",
+      "timeout": 10000
+    },
+    "update": {
+      "route": "/api/rules/update",
+      "timeout": 10000
+    },
+    "delete": {
+      "route": "/api/rules/delete",
+      "timeout": 5000
+    },
+    "search": {
+      "route": "/api/rules/search",
+      "timeout": 8000
+    }
+  },
+  "algo-manager": {
+    "endpoint": "http://localhost:8081",
+    "approvals": {
+      "get-all-requests": {
+        "route": "/api/approvals/all",
+        "timeout": 8000
+      },
+      "get-request-by-id": {
+        "route": "/api/approvals/info",
+        "timeout": 5000
+      },
+      "create-request": {
+        "route": "/api/approvals/create",
+        "timeout": 10000
+      },
+      "approve-request": {
+        "route": "/api/approvals/approve",
+        "timeout": 8000
+      },
+      "reject-request": {
+        "route": "/api/approvals/reject",
+        "timeout": 8000
+      },
+      "get-profile-algorithm": {
+        "route": "/api/approvals/profile-algorithm",
+        "timeout": 5000
+      }
+    }
+  },
+  "map-viewer": {
+    "iframeUrl": "https://maps.example.com/viewer"
+  },
+  "roberto": {
+    "endpoint": "http://localhost:8083",
+    "get-sensor-groups": {
+      "route": "/api/roberto/sensor-groups",
+      "timeout": 10000
+    }
+  }
+}

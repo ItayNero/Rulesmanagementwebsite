@@ -31,7 +31,7 @@ export function UsersManagement({ currentUsername }: UsersManagementProps) {
   // Form state
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<'admin' | 'editor'>('editor');
+  const [newRole, setNewRole] = useState<'admin' | 'user'>('user');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export function UsersManagement({ currentUsername }: UsersManagementProps) {
   function handleOpenAddDialog() {
     setNewUsername('');
     setNewPassword('');
-    setNewRole('editor');
+    setNewRole('user');
     setError('');
     setIsAddDialogOpen(true);
   }
@@ -174,7 +174,7 @@ export function UsersManagement({ currentUsername }: UsersManagementProps) {
                         <>
                           <UserIcon className="h-4 w-4 text-blue-500" />
                           <span className="text-sm font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded">
-                            Editor
+                            User
                           </span>
                         </>
                       )}
@@ -243,19 +243,19 @@ export function UsersManagement({ currentUsername }: UsersManagementProps) {
 
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
-              <Select value={newRole} onValueChange={(value: 'admin' | 'editor') => setNewRole(value)}>
+              <Select value={newRole} onValueChange={(value: 'admin' | 'user') => setNewRole(value)}>
                 <SelectTrigger id="role">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="editor">Editor</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
                 {newRole === 'admin' 
                   ? 'Admins can manage users and approve rule changes'
-                  : 'Editors can create, edit, and delete rules (requires admin approval)'}
+                  : 'Users can create, edit, and delete rules (requires admin approval)'}
               </p>
             </div>
           </div>

@@ -30,7 +30,6 @@ export function ApprovalsManagement({ currentUsername, onApprovalProcessed }: Ap
   const [selectedApproval, setSelectedApproval] = useState<RuleApproval | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
-  const [rejectComments, setRejectComments] = useState('');
 
   useEffect(() => {
     loadApprovals();
@@ -55,14 +54,12 @@ export function ApprovalsManagement({ currentUsername, onApprovalProcessed }: Ap
 
   function handleOpenRejectDialog(approval: RuleApproval) {
     setSelectedApproval(approval);
-    setRejectComments('');
     setIsRejectDialogOpen(true);
   }
 
   function handleCloseRejectDialog() {
     setIsRejectDialogOpen(false);
     setSelectedApproval(null);
-    setRejectComments('');
   }
 
   async function handleApprove(approval: RuleApproval) {
@@ -91,7 +88,7 @@ export function ApprovalsManagement({ currentUsername, onApprovalProcessed }: Ap
     if (!selectedApproval) return;
 
     try {
-      rejectRequest(selectedApproval.id, currentUsername, rejectComments);
+      rejectRequest(selectedApproval.id, currentUsername, '');
       toast.success('Request rejected');
       loadApprovals();
       handleCloseRejectDialog();
@@ -348,30 +345,17 @@ export function ApprovalsManagement({ currentUsername, onApprovalProcessed }: Ap
           <DialogHeader>
             <DialogTitle>Reject Request</DialogTitle>
             <DialogDescription>
-              Provide a reason for rejecting this {selectedApproval?.actionType} request (optional)
+              Are you sure you want to reject this {selectedApproval?.actionType} request for rule "{selectedApproval?.rule.rule_name}"?
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="comments">Rejection Comments</Label>
-              <Textarea
-                id="comments"
-                placeholder="Enter reason for rejection..."
-                value={rejectComments}
-                onChange={(e) => setRejectComments(e.target.value)}
-                rows={4}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button variant="outline" onClick={handleCloseRejectDialog}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleReject}>
               <XCircle className="h-4 w-4 mr-2" />
-              Reject Request
+              Yes, Reject Request
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -9,7 +9,7 @@ const USERS_VERSION_KEY = 'rules_management_users_version';
 const CURRENT_VERSION = '4'; // Increment this to force reset
 
 // Default users with different roles
-const DEFAULT_USERS: User[] = [
+const defaultUsers: User[] = [
   {
     username: 'admin',
     password: 'admin123',
@@ -17,9 +17,9 @@ const DEFAULT_USERS: User[] = [
     createdAt: new Date().toISOString()
   },
   {
-    username: 'editor',
-    password: 'editor123',
-    role: 'editor',
+    username: 'user',
+    password: 'user123',
+    role: 'user',
     createdAt: new Date().toISOString()
   }
 ];
@@ -35,16 +35,16 @@ function getUsers(): User[] {
     
     // If version mismatch or no data, reset to defaults
     if (version !== CURRENT_VERSION || !stored) {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(DEFAULT_USERS));
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(defaultUsers));
       localStorage.setItem(USERS_VERSION_KEY, CURRENT_VERSION);
-      return DEFAULT_USERS;
+      return defaultUsers;
     }
     
     const users = JSON.parse(stored);
     
     // Ensure default users exist
     let updated = false;
-    for (const defaultUser of DEFAULT_USERS) {
+    for (const defaultUser of defaultUsers) {
       if (!users.some((u: User) => u.username === defaultUser.username)) {
         users.push(defaultUser);
         updated = true;
@@ -58,9 +58,9 @@ function getUsers(): User[] {
     return users;
   } catch (error) {
     console.error('Failed to load users:', error);
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(DEFAULT_USERS));
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(defaultUsers));
     localStorage.setItem(USERS_VERSION_KEY, CURRENT_VERSION);
-    return DEFAULT_USERS;
+    return defaultUsers;
   }
 }
 
@@ -94,7 +94,7 @@ export function getAllUsers(): Omit<User, 'password'>[] {
   return getUsers().map(({ password, ...user }) => user);
 }
 
-export function createUser(username: string, password: string, role: 'admin' | 'editor'): void {
+export function createUser(username: string, password: string, role: 'admin' | 'user'): void {
   const users = getUsers();
   
   // Check if user already exists

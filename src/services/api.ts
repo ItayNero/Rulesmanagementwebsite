@@ -102,5 +102,35 @@ export const rulesApi = {
     // Simulate API call to sqrule/getAll
     await new Promise(resolve => setTimeout(resolve, 200));
     return Object.keys(mockProfileAlgorithmMapping);
+  },
+
+  async getSensorGroupsByModel(modelName: string): Promise<Record<string, string[]>> {
+    // Simulate API call to roberto API with model name
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // Mock sensor groups data
+    const mockSensorGroups: Record<string, Record<string, string[]>> = {
+      'Profile_A': {
+        'SensorGroup_A1': ['sensor_a1', 'sensor_a2', 'sensor_a3'],
+        'SensorGroup_A2': ['sensor_a4', 'sensor_a5'],
+      },
+      'Profile_B': {
+        'SensorGroup_B1': ['sensor_b1', 'sensor_b2'],
+        'SensorGroup_B2': ['sensor_b3', 'sensor_b4', 'sensor_b5'],
+        'SensorGroup_B3': ['sensor_b6'],
+      },
+      'Profile_C': {
+        'SensorGroup_C1': ['sensor_c1', 'sensor_c2', 'sensor_c3', 'sensor_c4'],
+      },
+      'VIP_Profile': {
+        'VIP_SensorGroup_1': ['vip_sensor_1', 'vip_sensor_2'],
+        'VIP_SensorGroup_2': ['vip_sensor_3', 'vip_sensor_4', 'vip_sensor_5'],
+      },
+      'Standard_Profile': {
+        'Standard_SensorGroup': ['std_sensor_1', 'std_sensor_2', 'std_sensor_3'],
+      },
+    };
+    
+    return mockSensorGroups[modelName] || {};
   }
 };

@@ -7,9 +7,20 @@ export default defineConfig({
   plugins: [
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them
-    react(),
+    react({
+      babel: {
+        plugins: [
+          ['@babel/plugin-proposal-decorators', { legacy: true }],
+          ['@babel/plugin-transform-class-properties', { loose: true }],
+        ],
+      },
+    }),
     tailwindcss(),
   ],
+  esbuild: {
+    // Enable experimental decorators and emit decorator metadata
+    target: 'es2020',
+  },
   resolve: {
     alias: {
       // Alias @ to the src directory
