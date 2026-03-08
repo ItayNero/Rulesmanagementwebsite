@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { CheckCircle, XCircle, Clock, Eye, FileText, FilePlus, FileEdit, Trash2 } from 'lucide-react';
-import { getPendingApprovals, approveRequest, rejectRequest } from '../../services/approvalService';
-import { rulesApi } from '../../services/api';
+import { getPendingApprovals, approveRequest, rejectRequest } from '../services/approvalRequests';
+import { rulesApi } from '../services/api';
 import { toast } from 'sonner';
-import type { RuleApproval } from '../../types/approval';
-import type { Rule } from '../../types/rule';
+import type { RuleApproval, Rule } from '../types';
 
 // ============================================================================
 // TYPES

@@ -1,11 +1,11 @@
-import type { Rule, ApprovalRequest } from '../types';
+import type { Rule, RuleApproval } from '../types';
 
 const APPROVAL_REQUESTS_KEY = 'approval_requests';
 
 /**
  * Get all approval requests from localStorage
  */
-export function getApprovalRequests(): ApprovalRequest[] {
+export function getApprovalRequests(): RuleApproval[] {
   const stored = localStorage.getItem(APPROVAL_REQUESTS_KEY);
   if (!stored) return [];
   
@@ -17,9 +17,16 @@ export function getApprovalRequests(): ApprovalRequest[] {
 }
 
 /**
+ * Get all approvals (alias for getApprovalRequests)
+ */
+export function getAllApprovals(): RuleApproval[] {
+  return getApprovalRequests();
+}
+
+/**
  * Save approval requests to localStorage
  */
-function saveApprovalRequests(requests: ApprovalRequest[]): void {
+function saveApprovalRequests(requests: RuleApproval[]): void {
   localStorage.setItem(APPROVAL_REQUESTS_KEY, JSON.stringify(requests));
 }
 
@@ -27,21 +34,21 @@ function saveApprovalRequests(requests: ApprovalRequest[]): void {
  * Create a new approval request
  */
 export function createApprovalRequest(
-  operation: 'create' | 'update' | 'delete',
+  actionType: 'create' | 'update' | 'delete',
   requestedBy: string,
-  ruleData: Rule,
-  originalData?: Rule
-): ApprovalRequest {
+  rule: Rule,
+  originalRule?: Rule
+): RuleApproval {
   const requests = getApprovalRequests();
   
-  const newRequest: ApprovalRequest = {
+  const newRequest: RuleApproval = {
     id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    operation,
+    actionType,
     requestedBy,
     requestedAt: new Date().toISOString(),
     status: 'pending',
-    ruleData,
-    originalData,
+    rule,
+    originalRule,
   };
   
   requests.push(newRequest);
@@ -53,7 +60,7 @@ export function createApprovalRequest(
 /**
  * Get approval requests for a specific user
  */
-export function getUserRequests(username: string): ApprovalRequest[] {
+export function getUserRequests(username: string): RuleApproval[] {
   const requests = getApprovalRequests();
   return requests.filter(req => req.requestedBy === username);
 }
@@ -79,7 +86,7 @@ export function approveRequest(requestId: string, approvedBy: string): void {
 /**
  * Reject an approval request
  */
-export function rejectRequest(requestId: string, rejectedBy: string, rejectionReason?: string): void {
+export function rejectRequest(requestId: string, rejectedBy: string, reviewComments?: string): void {
   const requests = getApprovalRequests();
   const request = requests.find(req => req.id === requestId);
   
@@ -90,7 +97,7 @@ export function rejectRequest(requestId: string, rejectedBy: string, rejectionRe
   request.status = 'rejected';
   request.reviewedBy = rejectedBy;
   request.reviewedAt = new Date().toISOString();
-  request.rejectionReason = rejectionReason;
+  request.reviewComments = reviewComments;
   
   saveApprovalRequests(requests);
 }
@@ -107,7 +114,14 @@ export function deleteApprovalRequest(requestId: string): void {
 /**
  * Get pending approval requests (for admins)
  */
-export function getPendingRequests(): ApprovalRequest[] {
+export function getPendingRequests(): RuleApproval[] {
   const requests = getApprovalRequests();
   return requests.filter(req => req.status === 'pending');
+}
+
+/**
+ * Get pending approvals (alias for getPendingRequests)
+ */
+export function getPendingApprovals(): RuleApproval[] {
+  return getPendingRequests();
 }

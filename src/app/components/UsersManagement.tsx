@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { UserPlus, Trash2, Shield, User as UserIcon, AlertCircle } from 'lucide-react';
-import { getAllUsers, createUser, deleteUser } from '../../services/userService';
+import { getAllUsers, createUser, deleteUser } from '../services/users';
 import { toast } from 'sonner';
-import type { User } from '../../types/user';
+import type { AuthUser } from '../types';
 
 // ============================================================================
 // TYPES
@@ -23,7 +25,7 @@ interface UsersManagementProps {
 // ============================================================================
 
 export function UsersManagement({ currentUsername }: UsersManagementProps) {
-  const [users, setUsers] = useState<Omit<User, 'password'>[]>([]);
+  const [users, setUsers] = useState<AuthUser[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
@@ -136,14 +138,13 @@ export function UsersManagement({ currentUsername }: UsersManagementProps) {
             <tr>
               <th className="text-left px-4 py-3 font-medium text-sm">Username</th>
               <th className="text-left px-4 py-3 font-medium text-sm">Role</th>
-              <th className="text-left px-4 py-3 font-medium text-sm">Created At</th>
               <th className="text-right px-4 py-3 font-medium text-sm">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {users.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
                   No users found
                 </td>
               </tr>
@@ -179,9 +180,6 @@ export function UsersManagement({ currentUsername }: UsersManagementProps) {
                         </>
                       )}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {new Date(user.createdAt).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Button

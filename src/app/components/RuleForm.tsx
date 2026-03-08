@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Rule } from '../../types/rule';
+import type { Rule } from '../../types/rule';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Button } from './ui/button';
@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from './ui/select';
 import { MultiSelect } from './ui/multi-select';
-import { rulesApi } from '../../services/api';
+import { algoApi, robertoApi } from '../services/api';
 import shp from 'shpjs';
 import JSZip from 'jszip';
 import { configService } from '../../config/configService';
@@ -56,10 +56,10 @@ export function RuleForm({ initialRule, onSubmit, onCancel, isEdit, currentUsern
   useEffect(() => {
     const loadMappingData = async () => {
       try {
-        const [mapping, profiles] = await Promise.all([
-          rulesApi.getProfileAlgorithmMapping(),
-          rulesApi.getProfiles()
-        ]);
+        // Load all profiles and their algorithm mappings
+        const mapping = await algoApi.getAllProfiles();
+        const profiles = Object.keys(mapping);
+        
         setProfileAlgorithmMapping(mapping);
         setAvailableProfiles(profiles);
       } catch (error) {
@@ -105,11 +105,10 @@ export function RuleForm({ initialRule, onSubmit, onCancel, isEdit, currentUsern
 
     // Load sensor groups for the selected profile
     setLoadingSensorGroups(true);
-    rulesApi.getSensorGroupsByModel(profileName)
-      .then(groupsMap => {
-        // Extract group names from the returned map
-        const groupNames = Object.keys(groupsMap);
-        setAvailableSensorGroups(groupNames);
+    robertoApi.getSensorGroupsByModel(profileName)
+      .then(groups => {
+        // The API returns an array of sensor group names
+        setAvailableSensorGroups(groups);
         setLoadingSensorGroups(false);
       })
       .catch(error => {

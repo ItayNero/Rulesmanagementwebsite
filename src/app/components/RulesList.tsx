@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Rule } from '../../types/rule';
+import type { Rule } from '../../types/rule';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { rulesApi } from '../../services/api';
+import { algoApi } from '../services/api';
 
 // ============================================================================
 // CONSTANTS
@@ -150,8 +150,8 @@ export function RulesList({
   async function loadProfileAlgorithmMappingData() {
     try {
       const [mapping, profiles] = await Promise.all([
-        rulesApi.getProfileAlgorithmMapping(),
-        rulesApi.getProfiles()
+        algoApi.getProfileAlgorithmMapping(),
+        algoApi.getProfiles()
       ]);
       setProfileToAlgorithmMap(mapping);
       setAvailableProfiles(profiles);

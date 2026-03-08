@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Button } from './ui/button';
+import { Lock, User, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Lock, User, AlertCircle } from 'lucide-react';
+import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
-import { authenticateUser } from '../../services/userService';
-import type { AuthUser } from '../../types/user';
+import { authenticateUser } from '../services/users';
+import type { AuthUser } from '../types';
 
 // ============================================================================
 // TYPES
@@ -33,8 +34,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    // Validate credentials
-    const user = authenticateUser(username, password);
+    // Validate credentials (simple authentication - just check username exists)
+    const user = authenticateUser(username);
     
     if (user) {
       onLoginSuccess(user);
@@ -50,15 +51,15 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="w-full max-w-md">
         {/* Login Card */}
-        <div className="bg-white rounded-lg shadow-xl p-8 space-y-6">
+        <Card className="bg-white rounded-lg shadow-xl p-8 space-y-6">
           {/* Header */}
-          <div className="text-center space-y-2">
+          <CardHeader className="text-center space-y-2">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-full mb-4">
               <Lock className="h-8 w-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Rules Management</h1>
-            <p className="text-gray-600">Sign in to access the system</p>
-          </div>
+            <CardTitle className="text-3xl font-bold text-gray-900">Rules Management</CardTitle>
+            <CardDescription className="text-gray-600">Sign in to access the system</CardDescription>
+          </CardHeader>
 
           {/* Error Alert */}
           {errorMessage && (
@@ -117,7 +118,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
-        </div>
+        </Card>
       </div>
     </div>
   );

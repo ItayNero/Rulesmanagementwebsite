@@ -182,6 +182,21 @@ export const algoApi = {
 
     return await response.json();
   },
+
+  /**
+   * Alias for getAllProfiles - used by RulesList
+   */
+  async getProfileAlgorithmMapping(): Promise<Record<string, string>> {
+    return this.getAllProfiles();
+  },
+
+  /**
+   * Get list of profile names
+   */
+  async getProfiles(): Promise<string[]> {
+    const mapping = await this.getAllProfiles();
+    return Object.keys(mapping);
+  },
 };
 
 /**

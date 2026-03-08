@@ -37,6 +37,13 @@ export function getUsers(): AuthUser[] {
 }
 
 /**
+ * Get all users (alias for getUsers)
+ */
+export function getAllUsers(): AuthUser[] {
+  return getUsers();
+}
+
+/**
  * Save users to localStorage
  */
 function saveUsers(users: AuthUser[]): void {
@@ -54,15 +61,28 @@ export function authenticateUser(username: string): AuthUser | null {
 /**
  * Create a new user
  */
-export function createUser(user: AuthUser): void {
+export function createUser(username: string, password: string, role: 'admin' | 'user'): void;
+export function createUser(user: AuthUser): void;
+export function createUser(usernameOrUser: string | AuthUser, password?: string, role?: 'admin' | 'user'): void {
   const users = getUsers();
   
+  let username: string;
+  let newRole: 'admin' | 'user';
+  
+  if (typeof usernameOrUser === 'string') {
+    username = usernameOrUser;
+    newRole = role || 'user';
+  } else {
+    username = usernameOrUser.username;
+    newRole = usernameOrUser.role;
+  }
+  
   // Check if user already exists
-  if (users.some(u => u.username === user.username)) {
+  if (users.some(u => u.username === username)) {
     throw new Error('User already exists');
   }
   
-  users.push(user);
+  users.push({ username, role: newRole });
   saveUsers(users);
 }
 
