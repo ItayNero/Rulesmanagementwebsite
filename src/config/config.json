@@ -44,6 +44,10 @@
     "search": {
       "route": "/api/rules/search",
       "timeout": 8000
+    },
+    "toggle-active": {
+      "route": "/api/rules/toggle-active",
+      "timeout": 5000
     }
   },
   "algo-manager": {
@@ -73,6 +77,14 @@
         "route": "/api/approvals/profile-algorithm",
         "timeout": 5000
       }
+    },
+    "sqrule-get-all": {
+      "route": "/sqrule/getAll",
+      "timeout": 8000
+    },
+    "det-get-all": {
+      "route": "/det/getAll",
+      "timeout": 8000
     }
   },
   "map-viewer": {

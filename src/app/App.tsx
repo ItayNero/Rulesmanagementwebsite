@@ -131,7 +131,14 @@ export default function App() {
       const data = await rulesApi.getAllRules();
       setRules(data);
     } catch (error) {
-      toast.error('Failed to load rules');
+      console.error('Error loading rules:', error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        toast.error('Cannot connect to Rules API. Please check if the backend server is running on http://localhost:8080');
+      } else if (error instanceof DOMException && error.name === 'TimeoutError') {
+        toast.error('Request timed out. The Rules API is taking too long to respond.');
+      } else {
+        toast.error('Failed to load rules');
+      }
     } finally {
       setLoading(false);
     }
@@ -140,13 +147,7 @@ export default function App() {
   // Filter rules based on user role
   const getFilteredRules = () => {
     if (!currentUser) return [];
-    
-    // Admin can see all rules
-    if (currentUser.role === 'admin') {
-      return rules;
-    }
-    
-    // Users can only see their own rules
+    if (currentUser.role === 'admin') return rules;
     return rules.filter(rule => rule.username === currentUser.username);
   };
 

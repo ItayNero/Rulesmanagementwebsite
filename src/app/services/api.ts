@@ -11,14 +11,14 @@ export const rulesApi = {
    */
   async getAllRules(): Promise<Rule[]> {
     const config = configService.getRulesManagement();
-    const url = `${config.endpoint}${config['get-all-rules'].route}`;
+    const url = `${config.endpoint}${config['get-all'].route}`;
     
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(config['get-all-rules'].timeout),
+      signal: AbortSignal.timeout(config['get-all'].timeout),
     });
 
     if (!response.ok) {
@@ -26,7 +26,7 @@ export const rulesApi = {
     }
 
     const data = await response.json();
-    return data.rules || [];
+    return Array.isArray(data) ? data : (data.rules || []);
   },
 
   /**
@@ -34,7 +34,7 @@ export const rulesApi = {
    */
   async createRule(rule: Rule): Promise<void> {
     const config = configService.getRulesManagement();
-    const url = `${config.endpoint}${config['create-rule'].route}`;
+    const url = `${config.endpoint}${config.create.route}`;
     
     const response = await fetch(url, {
       method: 'POST',
@@ -42,7 +42,7 @@ export const rulesApi = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(rule),
-      signal: AbortSignal.timeout(config['create-rule'].timeout),
+      signal: AbortSignal.timeout(config.create.timeout),
     });
 
     if (!response.ok) {
@@ -55,7 +55,7 @@ export const rulesApi = {
    */
   async updateRule(rule: Rule): Promise<void> {
     const config = configService.getRulesManagement();
-    const url = `${config.endpoint}${config['update-rule'].route}`;
+    const url = `${config.endpoint}${config.update.route}`;
     
     const response = await fetch(url, {
       method: 'PUT',
@@ -63,7 +63,7 @@ export const rulesApi = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(rule),
-      signal: AbortSignal.timeout(config['update-rule'].timeout),
+      signal: AbortSignal.timeout(config.update.timeout),
     });
 
     if (!response.ok) {
@@ -76,14 +76,14 @@ export const rulesApi = {
    */
   async deleteRule(ruleName: string): Promise<void> {
     const config = configService.getRulesManagement();
-    const url = `${config.endpoint}${config['delete-rule'].route}/${ruleName}`;
+    const url = `${config.endpoint}${config.delete.route}/${ruleName}`;
     
     const response = await fetch(url, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(config['delete-rule'].timeout),
+      signal: AbortSignal.timeout(config.delete.timeout),
     });
 
     if (!response.ok) {
@@ -116,14 +116,14 @@ export const rulesApi = {
    */
   async searchRules(query: string): Promise<Rule[]> {
     const config = configService.getRulesManagement();
-    const url = `${config.endpoint}${config['search-rules'].route}?q=${encodeURIComponent(query)}`;
+    const url = `${config.endpoint}${config.search.route}?q=${encodeURIComponent(query)}`;
     
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(config['search-rules'].timeout),
+      signal: AbortSignal.timeout(config.search.timeout),
     });
 
     if (!response.ok) {

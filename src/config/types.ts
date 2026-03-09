@@ -1,13 +1,10 @@
 import { 
   IsString, 
   IsNumber, 
-  IsUrl, 
   IsArray, 
   IsInt, 
   Min, 
-  Max, 
   ValidateNested, 
-  IsObject,
   Matches 
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -88,6 +85,10 @@ export class RulesManagementConfig {
   @ValidateNested()
   @Type(() => RouteConfig)
   search!: RouteConfig;
+
+  @ValidateNested()
+  @Type(() => RouteConfig)
+  'toggle-active'!: RouteConfig;
 }
 
 /**
@@ -130,6 +131,14 @@ export class AlgoManagerConfig {
   @ValidateNested()
   @Type(() => AlgoManagerApprovalsConfig)
   approvals!: AlgoManagerApprovalsConfig;
+
+  @ValidateNested()
+  @Type(() => RouteConfig)
+  'sqrule-get-all'!: RouteConfig;
+
+  @ValidateNested()
+  @Type(() => RouteConfig)
+  'det-get-all'!: RouteConfig;
 }
 
 /**
